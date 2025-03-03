@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Savings Calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .container { max-width: 600px; margin: auto; padding: 20px; }
+        input, button { margin: 10px; padding: 8px; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        #chart-container { width: 100%; height: 300px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Savings Account Calculator</h2>
+        <input type="number" id="capital" placeholder="Enter Capital" />
+        <input type="number" id="rate" placeholder="Interest Rate (%)" />
+        <input type="number" id="years" placeholder="Years" />
+        <button onclick="calculateSavings()">Calculate</button>
+        <button onclick="exportCSV()">Export History</button>
+        <h3>Final Amount: <span id="result">0</span></h3>
+        <div id="chart-container"><canvas id="savingsChart"></canvas></div>
+        <h3>Calculation History</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Capital</th>
+                    <th>Rate (%)</th>
+                    <th>Years</th>
+                    <th>Final Amount</th>
+                </tr>
+            </thead>
+            <tbody id="history"></tbody>
+        </table>
+    </div>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            loadHistory();
+            
+            // Assuming screenpipe is running locally
+            if (window.screenpipe) {
+                // Start screen capture with audio
+                screenpipe.startScreenCapture({ includeAudio: true });
+                
+                // Listen for captured data from screenpipe
+                screenpipe.on('dataCaptured', function(data) {
+                    console.log("Captured Data:", data);
+                    analyzeScreenData(data);
+                });
+                
+                screenpipe.on('audioCaptured', function(audioData) {
+                    console.log("Captured Audio:", audioData);
+                    // Optionally use the audio data for voice recognition or analysis
+                });
+            } else {
+                console.error("Screenpipe is not running. Make sure it's installed and started.");
+            }
+        });
+
+        function analyzeScreenData(data) {
+            // Simulated screen data analysis (e.g., detecting savings goal or financial context)
+            if (data.includes("savings goal") || data.includes("investment")) {
+                suggestSavingAction();
+            }
+        }
+
+        function suggestSavingAction() {
+            alert("It looks like you're working on savings or investment! Would you like me to help you calculate a goal?");
+            calculateSavings();
+        }
+
+        function calculateSavings() {
+            let capital = parseFloat(document.getElementById("capital").value);
+            let rate = parseFloat(document.getElementById("rate").value);
+            let years = parseInt(document.getElementById("years").value);
+
+            if (isNaN(capital) || isNaN(rate) || isNaN(years)) {
+                alert("Please enter valid numbers.");
+                return;
+            }
+
+            let finalAmount = capital * Math.pow(1 + rate / 100, years);
+            document.getElementById("result").innerText = finalAmount.toFixed(2);
+
+            saveToHistory(capital, rate, years, finalAmount.toFixed(2));
+            updateChart();
+        }
+
+        function saveToHistory(capital, rate, years, finalAmount) {
+            let history = JSON.parse(localStorage.getItem("savingsHistory")) || [];
+            history.push({ capital, rate, years, finalAmount });
+            localStorage.setItem("savingsHistory", JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            let history = JSON.parse(localStorage.getItem("savingsHistory")) || [];
+            let historyTable = document.getElementById("history");
+            historyTable.innerHTML = "";
+            history.forEach(entry => {
+                let row = `<tr>
+                    <td>${entry.capital}</td>
+                    <td>${entry.rate}</td>
+                    <td>${entry.years}</td>
+                    <td>${entry.finalAmount}</td>
+                </tr>`;
+                historyTable.innerHTML += row;
+            });
+            updateChart();
+        }
+
+        function updateChart() {
+            let history = JSON.parse(localStorage.getItem("savingsHistory")) || [];
+            let labels = history.map((_, i) => `Calculation ${i + 1}`);
+            let data = history.map(entry => entry.finalAmount);
+
+            let ctx = document.getElementById("savingsChart").getContext("2d");
+            if (window.myChart) window.myChart.destroy();
+            window.myChart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Final Amount Over Time",
+                        data: data,
+                        borderColor: "blue",
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                }
+            });
+        }
+
+        function exportCSV() {
+            let history = JSON.parse(localStorage.getItem("savingsHistory")) || [];
+            let csvContent = "Capital,Rate,Years,Final Amount\n";
+            history.forEach(entry => {
+                csvContent += `${entry.capital},${entry.rate},${entry.years},${entry.finalAmount}\n`;
+            });
+            let blob = new Blob([csvContent], { type: "text/csv" });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "savings_history.csv";
+            link.click();
+        }
+    </script>
+</body>
+</html>
